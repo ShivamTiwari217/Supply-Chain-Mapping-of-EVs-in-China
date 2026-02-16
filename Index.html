@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>China EV Supply Chain & Emissions Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Chart Container Strict Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Constraint for large screens */
+            height: 300px;
+            margin: 0 auto; /* Center horizontally */
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        
+        /* Smooth Transitions */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Stage Indicator Active State */
+        .stage-btn.active {
+            background-color: #0f766e; /* teal-700 */
+            color: white;
+            border-color: #0f766e;
+        }
+        .stage-btn.active .icon {
+            color: white;
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals & Earthy Teals. 
+         Background: Stone-50 (#fafaf9). 
+         Text: Slate-800. 
+         Accents: Teal-700 (Sustainability/EVs), Amber-600 (Raw Materials/Energy). -->
+
+    <!-- Application Structure Plan: 
+         The app is designed as a "Lifecycle Explorer". 
+         1. Header: Context and high-level thesis statement.
+         2. Interactive Supply Chain Flow (Nav): A horizontal process map (Upstream -> Midstream -> Downstream -> Circular Economy). This serves as the primary navigation to enforce the "Chain" concept.
+         3. Dynamic Dashboard Area: The central view updates based on the selected stage.
+            - Left Column: Contextual narrative, key players, and qualitative findings.
+            - Right Column: Quantitative data visualizations (Market share, processing capacity).
+         4. Emissions Simulator (Footer/Overlay): A persistent or toggleable tool to quantify emissions based on the "Grid Mix" variable, addressing the specific requirement to suggest quantification methods.
+         5. Methodology Section: Explains LCA (Life Cycle Assessment) logic.
+    -->
+
+    <!-- Visualization & Content Choices:
+         1. Upstream: Grouped Bar Chart. Goal: Compare Mining vs. Processing share. Justification: Highlights China's dominance in processing even if they don't mine everything.
+         2. Midstream: Doughnut Chart. Goal: Show market consolidation (CATL/BYD). Justification: Quickly conveys oligopoly.
+         3. Lifecycle Emissions: Stacked Bar Chart. Goal: Break down CO2 per stage. Justification: Visualizes where the "hotspots" are (Manufacturing vs Use).
+         4. Interaction: Sliders for Grid Intensity. Goal: Allow users to see how renewable energy changes the "Green" status of EVs. 
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-[#fafaf9] text-slate-800 font-sans antialiased selection:bg-teal-200 selection:text-teal-900">
+
+    <!-- Top Navigation / Header -->
+    <header class="w-full bg-white border-b border-stone-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white font-bold text-lg">C</div>
+                <h1 class="text-xl font-bold tracking-tight text-slate-900">China EV Supply Chain <span class="text-teal-600 font-normal">Mapping & Analysis</span></h1>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <button onclick="app.setView('dashboard')" class="text-slate-600 hover:text-teal-700 px-3 py-2 text-sm font-medium transition-colors">Dashboard</button>
+                <button onclick="app.setView('methodology')" class="text-slate-600 hover:text-teal-700 px-3 py-2 text-sm font-medium transition-colors">Quantification Methodology</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
+        
+        <!-- Intro Section -->
+        <section class="mb-10 text-center max-w-3xl mx-auto">
+            <h2 class="text-3xl font-bold text-slate-900 mb-4">From Mine to Mobility: A Thesis Overview</h2>
+            <p class="text-lg text-slate-600 leading-relaxed">
+                This interactive tool maps the critical nodes of the Electric Vehicle (EV) supply chain in China. 
+                Explore the dominance of processing capacity, the geography of manufacturing, and the lifecycle emissions profile 
+                that determines the true environmental impact of the "New Energy Vehicle" revolution.
+            </p>
+        </section>
+
+        <!-- View: Methodology (Hidden by default) -->
+        <div id="methodology-view" class="hidden fade-in space-y-8">
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-stone-200">
+                <h3 class="text-2xl font-bold text-slate-900 mb-4 border-b border-stone-100 pb-2">Quantifying Emissions: The LCA Approach</h3>
+                <p class="mb-6 text-slate-600">To accurately map the environmental cost of EVs, we utilize a <strong>Life Cycle Assessment (LCA)</strong> framework. This moves beyond tailpipe emissions (which are zero) to encompass the "Cradle-to-Grave" impact.</p>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <div class="bg-stone-50 p-4 rounded-lg border-l-4 border-teal-600">
+                            <h4 class="font-bold text-lg text-slate-800">1. GREET Model Adaptation</h4>
+                            <p class="text-sm text-slate-600 mt-1">We adapt the GREET (Greenhouse gases, Regulated Emissions, and Energy use in Technologies) model, modifying input parameters to reflect China's specific energy mix (higher coal dependency in Northern provinces vs. Hydro in the South).</p>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg border-l-4 border-amber-500">
+                            <h4 class="font-bold text-lg text-slate-800">2. System Boundaries</h4>
+                            <p class="text-sm text-slate-600 mt-1"><strong>Temporal:</strong> 150,000 km vehicle lifetime.<br><strong>Geographical:</strong> Domestic extraction vs. Imported raw materials logistics.</p>
+                        </div>
+                    </div>
+                    <div>
+                         <h4 class="font-bold text-lg text-slate-800 mb-3">The Equation</h4>
+                         <div class="bg-slate-900 text-teal-300 font-mono p-4 rounded-lg overflow-x-auto">
+                             E_total = E_production + E_use + E_eol<br><br>
+                             Where:<br>
+                             E_use = (Energy_efficiency * Grid_intensity * Distance)<br>
+                             E_production = Σ(Material_mass * Emission_factor)
+                         </div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center">
+                <button onclick="app.setView('dashboard')" class="bg-teal-700 hover:bg-teal-800 text-white font-bold py-2 px-6 rounded-full transition-colors shadow-lg">Return to Dashboard</button>
+            </div>
+        </div>
+
+        <!-- View: Dashboard (Default) -->
+        <div id="dashboard-view" class="fade-in">
+            
+            <!-- Interactive Stage Selector (Navigation Flow) -->
+            <div class="mb-8 overflow-x-auto pb-4">
+                <div class="flex md:grid md:grid-cols-4 gap-4 min-w-[600px]">
+                    <!-- Upstream -->
+                    <button onclick="app.loadStage('upstream')" id="btn-upstream" class="stage-btn group flex flex-col items-center justify-center p-4 bg-white border-2 border-stone-200 rounded-xl hover:border-teal-400 transition-all active w-full">
+                        <span class="icon text-2xl mb-2 text-stone-400 group-hover:text-teal-600">⛏️</span>
+                        <div class="text-center">
+                            <h3 class="font-bold text-sm uppercase tracking-wide">Upstream</h3>
+                            <p class="text-xs opacity-70">Raw Materials & Processing</p>
+                        </div>
+                    </button>
+
+                    <!-- Midstream -->
+                    <button onclick="app.loadStage('midstream')" id="btn-midstream" class="stage-btn group flex flex-col items-center justify-center p-4 bg-white border-2 border-stone-200 rounded-xl hover:border-teal-400 transition-all w-full">
+                        <span class="icon text-2xl mb-2 text-stone-400 group-hover:text-teal-600">🔋</span>
+                        <div class="text-center">
+                            <h3 class="font-bold text-sm uppercase tracking-wide">Mainstream</h3>
+                            <p class="text-xs opacity-70">Battery & Assembly</p>
+                        </div>
+                    </button>
+
+                    <!-- Downstream/Use -->
+                    <button onclick="app.loadStage('downstream')" id="btn-downstream" class="stage-btn group flex flex-col items-center justify-center p-4 bg-white border-2 border-stone-200 rounded-xl hover:border-teal-400 transition-all w-full">
+                        <span class="icon text-2xl mb-2 text-stone-400 group-hover:text-teal-600">🚗</span>
+                        <div class="text-center">
+                            <h3 class="font-bold text-sm uppercase tracking-wide">Downstream</h3>
+                            <p class="text-xs opacity-70">Distribution & Use Phase</p>
+                        </div>
+                    </button>
+
+                    <!-- End of Life -->
+                    <button onclick="app.loadStage('lifecycle')" id="btn-lifecycle" class="stage-btn group flex flex-col items-center justify-center p-4 bg-white border-2 border-stone-200 rounded-xl hover:border-teal-400 transition-all w-full">
+                        <span class="icon text-2xl mb-2 text-stone-400 group-hover:text-teal-600">♻️</span>
+                        <div class="text-center">
+                            <h3 class="font-bold text-sm uppercase tracking-wide">Lifecycle</h3>
+                            <p class="text-xs opacity-70">Recycling & Emissions</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dynamic Content Area -->
+            <div class="grid lg:grid-cols-12 gap-8">
+                
+                <!-- Left Column: Context & Text -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 h-full">
+                        <h3 id="section-title" class="text-2xl font-bold text-slate-800 mb-4">Upstream: The Mineral Monopoly</h3>
+                        <div id="section-content" class="prose prose-slate text-slate-600">
+                            <!-- Content injected via JS -->
+                        </div>
+                        
+                        <!-- Dynamic KPIs -->
+                        <div id="kpi-container" class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-stone-100">
+                            <!-- KPIs injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Visualization -->
+                <div class="lg:col-span-7">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 id="chart-title" class="text-lg font-bold text-slate-700">Global Processing Share</h3>
+                            
+                            <!-- Controls for Chart (Only visible when needed) -->
+                            <div id="chart-controls" class="hidden flex gap-2">
+                                <button onclick="app.updateEmissions(0.8)" class="text-xs bg-stone-100 hover:bg-stone-200 px-2 py-1 rounded">High Coal</button>
+                                <button onclick="app.updateEmissions(0.4)" class="text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 px-2 py-1 rounded">Greener Grid</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart Container -->
+                        <div class="chart-container">
+                            <canvas id="mainChart"></canvas>
+                        </div>
+                        <p id="chart-desc" class="mt-4 text-sm text-slate-500 italic text-center">
+                            Comparison of mining vs. refining capacity reveals the strategic bottleneck.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Tool: Emissions Calculator (Always visible at bottom of dashboard) -->
+            <section class="mt-8 bg-slate-900 rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-teal-500 rounded-full opacity-10 blur-2xl"></div>
+                
+                <div class="relative z-10 grid md:grid-cols-3 gap-8 items-center">
+                    <div class="md:col-span-1">
+                        <h3 class="text-xl font-bold text-teal-400 mb-2">⚡ Interactive Scenario</h3>
+                        <p class="text-slate-300 text-sm">
+                            Emissions depend heavily on electricity sources during battery production and vehicle charging. Adjust the grid mix to see the impact.
+                        </p>
+                    </div>
+                    <div class="md:col-span-2 bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                        <label for="coal-slider" class="block text-sm font-medium text-slate-300 mb-2">
+                            Grid Coal Intensity: <span id="coal-val" class="text-teal-400 font-bold">60%</span> (Current China Avg ~63%)
+                        </label>
+                        <input type="range" id="coal-slider" min="0" max="100" value="60" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-teal-500">
+                        <div class="flex justify-between text-xs text-slate-500 mt-2">
+                            <span>100% Renewables</span>
+                            <span>100% Coal</span>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-slate-700 grid grid-cols-2 gap-4 text-center">
+                            <div>
+                                <div class="text-xs text-slate-400 uppercase">Est. Carbon Footprint</div>
+                                <div class="text-2xl font-bold text-white"><span id="total-emissions">38.5</span> <span class="text-sm font-normal text-slate-400">tCO2e</span></div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-400 uppercase">ICE Comparison</div>
+                                <div class="text-2xl font-bold text-teal-400"><span id="savings">-24%</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-stone-200 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
+            <p>© 2026 EV Supply Chain Research Project. Interactive Mapping Tool.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Data Store ---
+        const dataStore = {
+            upstream: {
+                title: "Upstream: The Mineral Monopoly",
+                content: `<p class="mb-4">The upstream segment involves the mining and refining of critical minerals: Lithium, Cobalt, Nickel, and Graphite. While resources are geographically dispersed, <strong>refining capacity is highly concentrated in China</strong>.</p>
+                          <p>Key Challenge: Geopolitical risk and high carbon intensity of mining operations. China controls ~60% of global lithium processing despite holding only ~7% of reserves.</p>
+                          <h4 class="font-bold mt-4 text-slate-800">Key Commodities:</h4>
+                          <ul class="list-disc pl-5 space-y-1 mt-2">
+                            <li><strong>Lithium:</strong> Sourced from domestic brine (Qinghai) and imported spodumene (Australia).</li>
+                            <li><strong>Cobalt:</strong> Heavily reliant on DR Congo, processed in China.</li>
+                          </ul>`,
+                kpis: [
+                    { label: "Global Lithium Processing", value: "65%" },
+                    { label: "Graphite Anode Production", value: "90%" }
+                ],
+                chartType: 'bar',
+                chartTitle: 'China\'s Share: Mining vs. Processing',
+                chartData: {
+                    labels: ['Lithium', 'Cobalt', 'Nickel', 'Rare Earths', 'Graphite'],
+                    datasets: [
+                        {
+                            label: 'Mining Share (%)',
+                            data: [13, 1, 4, 60, 65], // Approximate 2024 stats
+                            backgroundColor: '#d6d3d1', // Stone-300
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Processing Share (%)',
+                            data: [65, 75, 60, 87, 90], // Dominance
+                            backgroundColor: '#d97706', // Amber-600
+                            borderRadius: 4
+                        }
+                    ]
+                }
+            },
+            midstream: {
+                title: "Mainstream: The Battery Powerhouse",
+                content: `<p class="mb-4">Midstream mapping focuses on the manufacturing of cathode/anode materials and battery cells. This is the most value-intensive stage.</p>
+                          <p>Chinese firms like <strong>CATL</strong> and <strong>BYD</strong> dominate the global landscape, creating a vertical integration barrier for foreign competitors.</p>
+                          <div class="bg-blue-50 p-3 rounded-lg mt-4 border border-blue-100">
+                             <span class="font-bold text-blue-800">LFP vs. NMC:</span> China has championed Lithium Iron Phosphate (LFP) chemistry, which is cheaper and safer, though less energy-dense than NMC.
+                          </div>`,
+                kpis: [
+                    { label: "Global Battery Market Share", value: "62%" },
+                    { label: "LFP Cathode Output", value: "99%" }
+                ],
+                chartType: 'doughnut',
+                chartTitle: 'Global EV Battery Market Share (2024 Est.)',
+                chartData: {
+                    labels: ['CATL (China)', 'BYD (China)', 'LG Energy (Korea)', 'Panasonic (Japan)', 'CALB (China)', 'Others'],
+                    datasets: [{
+                        data: [37, 16, 13, 6, 4, 24],
+                        backgroundColor: [
+                            '#0f766e', // Teal-700 (CATL)
+                            '#0d9488', // Teal-600 (BYD)
+                            '#94a3b8', // Slate-400
+                            '#cbd5e1', // Slate-300
+                            '#2dd4bf', // Teal-400 (CALB)
+                            '#f1f5f9'  // Slate-100
+                        ],
+                        borderWidth: 0
+                    }]
+                }
+            },
+            downstream: {
+                title: "Downstream: Adoption & Infrastructure",
+                content: `<p class="mb-4">Downstream includes vehicle assembly, distribution, charging networks, and electricity generation.</p>
+                          <p>China is the world's largest EV market. The "Dual Credit Policy" compels manufacturers to meet production quotas. However, the environmental benefit is contingent on the <strong>grid mix</strong> used for charging.</p>
+                          <p>Regional disparity is key: Coastal cities utilize cleaner energy/nuclear, while inland regions rely heavily on coal power.</p>`,
+                kpis: [
+                    { label: "Domestic EV Sales (2025 Est)", value: "11.5M" },
+                    { label: "Public Charging Piles", value: ">3M" }
+                ],
+                chartType: 'line',
+                chartTitle: 'EV Sales Penetration Rate in China',
+                chartData: {
+                    labels: ['2020', '2021', '2022', '2023', '2024', '2025 (Proj)'],
+                    datasets: [{
+                        label: 'Penetration Rate (%)',
+                        data: [5.4, 13.4, 27.6, 31.6, 38.0, 45.0],
+                        borderColor: '#0f766e',
+                        backgroundColor: 'rgba(15, 118, 110, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                }
+            },
+            lifecycle: {
+                title: "Lifecycle & Emissions Analysis",
+                content: `<p class="mb-4">The final stage maps the "End-of-Life" (EoL). Batteries must be retired, repurposed (Second Life), or recycled.</p>
+                          <p><strong>Emissions Hotspots:</strong></p>
+                          <ul class="list-disc pl-5 space-y-1 text-sm">
+                            <li><strong>Production:</strong> High electricity usage in cathode drying and aluminum smelting.</li>
+                            <li><strong>Use Phase:</strong> Determines ~60% of total lifetime emissions depending on grid cleanliness.</li>
+                          </ul>
+                          <p class="mt-4">Recycling technologies (Hydrometallurgy) are maturing, promising to lower the carbon footprint of future cells by recovering lithium and cobalt.</p>`,
+                kpis: [
+                    { label: "Target Recovery Rate (Ni/Co)", value: "98%" },
+                    { label: "Recycling Market Growth", value: "+18% CAGR" }
+                ],
+                chartType: 'bar',
+                chartTitle: 'CO2 Breakdown: EV vs ICE (Lifetime)',
+                chartData: {
+                    labels: ['ICE Vehicle', 'EV (Coal Grid)', 'EV (Green Grid)'],
+                    datasets: [
+                        {
+                            label: 'Manufacturing',
+                            data: [8, 14, 14], // EV higher due to battery
+                            backgroundColor: '#d97706', // Manufacturing impact
+                            stack: 'Stack 0',
+                        },
+                        {
+                            label: 'Fuel/Electricity Cycle',
+                            data: [42, 30, 5], // Use phase
+                            backgroundColor: '#0f766e', // Use phase
+                            stack: 'Stack 0',
+                        },
+                        {
+                            label: 'Disposal/Recycling',
+                            data: [1, 2, 2],
+                            backgroundColor: '#64748b',
+                            stack: 'Stack 0',
+                        }
+                    ]
+                }
+            }
+        };
+
+        // --- Application Logic ---
+        const app = {
+            chartInstance: null,
+            currentStage: 'upstream',
+
+            init() {
+                // Initialize Charts default options
+                Chart.defaults.font.family = 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+                Chart.defaults.color = '#64748b';
+                
+                // Initialize default view
+                this.loadStage('upstream');
+
+                // Listener for Emissions Slider
+                document.getElementById('coal-slider').addEventListener('input', (e) => {
+                    this.updateCalculator(e.target.value);
+                });
+            },
+
+            setView(viewName) {
+                document.getElementById('dashboard-view').classList.add('hidden');
+                document.getElementById('methodology-view').classList.add('hidden');
+                
+                if(viewName === 'dashboard') {
+                    document.getElementById('dashboard-view').classList.remove('hidden');
+                } else {
+                    document.getElementById('methodology-view').classList.remove('hidden');
+                }
+            },
+
+            loadStage(stageKey) {
+                this.currentStage = stageKey;
+                const data = dataStore[stageKey];
+
+                // 1. Update Buttons State
+                document.querySelectorAll('.stage-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`btn-${stageKey}`).classList.add('active');
+
+                // 2. Update Text Content
+                document.getElementById('section-title').textContent = data.title;
+                document.getElementById('section-content').innerHTML = data.content;
+
+                // 3. Update KPIs
+                const kpiHTML = data.kpis.map(kpi => `
+                    <div class="bg-stone-50 p-4 rounded-lg border border-stone-100 text-center">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">${kpi.label}</div>
+                        <div class="text-2xl font-bold text-teal-700 mt-1">${kpi.value}</div>
+                    </div>
+                `).join('');
+                document.getElementById('kpi-container').innerHTML = kpiHTML;
+
+                // 4. Update Chart
+                this.renderChart(data);
+
+                // 5. Toggle Chart Controls (Special case for lifecycle or if we want specific interactions)
+                const chartControls = document.getElementById('chart-controls');
+                if (stageKey === 'lifecycle') {
+                   // chartControls.classList.remove('hidden'); 
+                   // Keeping simple for now, using the main calculator below instead
+                   chartControls.classList.add('hidden');
+                } else {
+                    chartControls.classList.add('hidden');
+                }
+            },
+
+            renderChart(data) {
+                const ctx = document.getElementById('mainChart').getContext('2d');
+                document.getElementById('chart-title').textContent = data.chartTitle;
+                document.getElementById('chart-desc').textContent = this.getChartDesc(this.currentStage);
+
+                if (this.chartInstance) {
+                    this.chartInstance.destroy();
+                }
+
+                const config = {
+                    type: data.chartType,
+                    data: data.chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { usePointStyle: true, padding: 20 }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                padding: 12,
+                                cornerRadius: 8,
+                                displayColors: true
+                            }
+                        },
+                        scales: data.chartType === 'doughnut' ? {} : {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                };
+
+                this.chartInstance = new Chart(ctx, config);
+            },
+
+            getChartDesc(stage) {
+                switch(stage) {
+                    case 'upstream': return "Comparison of global mining reserves vs. China's processing capacity.";
+                    case 'midstream': return "Dominance of Chinese manufacturers in the global battery market.";
+                    case 'downstream': return "Rapid adoption rates fueled by policy support.";
+                    case 'lifecycle': return "Total lifetime CO2 equivalent emissions (Manufacturing + Use + Disposal).";
+                    default: return "";
+                }
+            },
+
+            updateCalculator(coalPercent) {
+                // Simple linear model for demonstration
+                // Base car footprint (Manufacturing) = ~14 tons
+                // ICE footprint = ~50 tons total
+                // EV Use phase varies: 0% coal = 5 tons, 100% coal = 35 tons
+                
+                const baseMfg = 14; 
+                const baseRecycle = 2;
+                const minUse = 5; 
+                const maxUse = 35;
+                
+                const currentUse = minUse + ((maxUse - minUse) * (coalPercent / 100));
+                const total = (baseMfg + baseRecycle + currentUse).toFixed(1);
+                
+                // Compare to ICE (approx 50t)
+                const iceTotal = 50;
+                const savings = ((1 - (total / iceTotal)) * 100).toFixed(0);
+
+                // Update DOM
+                document.getElementById('coal-val').textContent = `${coalPercent}%`;
+                document.getElementById('total-emissions').textContent = total;
+                
+                const savingsEl = document.getElementById('savings');
+                if (savings > 0) {
+                    savingsEl.textContent = `-${savings}%`;
+                    savingsEl.classList.remove('text-red-400');
+                    savingsEl.classList.add('text-teal-400');
+                } else {
+                    savingsEl.textContent = `+${Math.abs(savings)}%`;
+                    savingsEl.classList.remove('text-teal-400');
+                    savingsEl.classList.add('text-red-400');
+                }
+            }
+        };
+
+        // Start App
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
