@@ -1,5 +1,7 @@
 Supply Chain Mapping of EVs in China: Interactive Dashboard
 
+Dashboard Link: https://supply-chain-mapping-of-evs-in-china-kq6p-lrmou88dv.vercel.app/
+
 📖 Overview
 
 This repository contains the interactive frontend visualization tool developed for the thesis "Supply Chain Mapping of Electric Vehicles (EVs) in China." The application serves as a digital companion to the research, providing a visual exploration of the EV lifecycle—from upstream raw material extraction to downstream end-of-life recycling. It aims to quantify and visualize the dominance of key players (e.g., CATL, BYD) and the environmental impact of the supply chain based on varying energy grid intensities.
